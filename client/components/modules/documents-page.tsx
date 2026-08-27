@@ -1,61 +1,66 @@
 "use client";
 
-import {
-  DataTable,
-  GhostButton,
-  ModuleHeader,
-  Panel,
-  PrimaryButton,
-  SearchField,
-  StatGrid,
-  StatusPill,
-} from "@/components/admin-ui";
+import { ModuleWorkspace } from "@/components/module-workspace";
 import { sampleDocuments } from "@/lib/sample-data";
 
-const tone = {
-  Valid: "success",
-  Expiring: "warning",
-  Expired: "danger",
-  "Missing scan": "warning",
-} as const;
+const seed = sampleDocuments.map((item, index) => ({
+  id: `doc-${index + 1}`,
+  document: item.document,
+  owner: item.owner,
+  category: item.category,
+  expiry: item.expiry,
+  status: item.status,
+}));
 
 export function DocumentsPage() {
   return (
-    <div className="space-y-6">
-      <ModuleHeader
-        eyebrow="DOCUMENTS"
-        title="Fleet documents"
-        description="Demo insurance, fitness, permits, and driver paperwork."
-        action={<PrimaryButton>Upload document</PrimaryButton>}
-      />
-      <StatGrid
-        items={[
-          { label: "Total files", value: String(sampleDocuments.length) },
-          { label: "Expiring soon", value: "1" },
-          { label: "Expired", value: "1" },
-          { label: "Missing", value: "1" },
-        ]}
-      />
-      <Panel
-        title="Document vault"
-        action={
-          <div className="flex gap-2">
-            <SearchField placeholder="Search document" />
-            <GhostButton>Folders</GhostButton>
-          </div>
-        }
-      >
-        <DataTable
-          columns={["Document", "Owner", "Category", "Expiry", "Status"]}
-          rows={sampleDocuments.map((item, index) => [
-            item.document,
-            item.owner,
-            item.category,
-            item.expiry,
-            <StatusPill key={`d-${index}`} label={item.status} tone={tone[item.status]} />,
-          ])}
-        />
-      </Panel>
-    </div>
+    <ModuleWorkspace
+      eyebrow="DOCUMENTS"
+      title="Fleet documents"
+      description="Add document records and export the vault."
+      storageKey="fleet_module_documents_v1"
+      seed={seed}
+      formTitle="Add document"
+      listTitle="Document vault"
+      createLabel="Save document"
+      statusKey="status"
+      statusTone={{
+        Valid: "success",
+        Expiring: "warning",
+        Expired: "danger",
+        "Missing scan": "warning",
+      }}
+      fields={[
+        { name: "document", label: "Document", placeholder: "Insurance policy" },
+        { name: "owner", label: "Owner", placeholder: "BUS-01" },
+        {
+          name: "category",
+          label: "Category",
+          options: [
+            { value: "Vehicle", label: "Vehicle" },
+            { value: "Driver", label: "Driver" },
+            { value: "Ops", label: "Ops" },
+          ],
+        },
+        { name: "expiry", label: "Expiry", placeholder: "12 Dec 2026" },
+        {
+          name: "status",
+          label: "Status",
+          options: [
+            { value: "Valid", label: "Valid" },
+            { value: "Expiring", label: "Expiring" },
+            { value: "Expired", label: "Expired" },
+            { value: "Missing scan", label: "Missing scan" },
+          ],
+        },
+      ]}
+      columns={[
+        { key: "document", label: "Document" },
+        { key: "owner", label: "Owner" },
+        { key: "category", label: "Category" },
+        { key: "expiry", label: "Expiry" },
+        { key: "status", label: "Status" },
+      ]}
+    />
   );
 }

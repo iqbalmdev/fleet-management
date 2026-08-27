@@ -1,60 +1,67 @@
 "use client";
 
-import {
-  DataTable,
-  GhostButton,
-  ModuleHeader,
-  Panel,
-  PrimaryButton,
-  SearchField,
-  StatGrid,
-  StatusPill,
-} from "@/components/admin-ui";
+import { ModuleWorkspace } from "@/components/module-workspace";
 import { sampleFuel } from "@/lib/sample-data";
 
-const tone = {
-  Posted: "success",
-  Review: "warning",
-} as const;
+const seed = sampleFuel.map((item, index) => ({
+  id: `fuel-${index + 1}`,
+  date: item.date,
+  vehicle: item.vehicle,
+  type: item.type,
+  note: item.note,
+  amount: item.amount,
+  status: item.status,
+}));
 
 export function FuelPage() {
   return (
-    <div className="space-y-6">
-      <ModuleHeader
-        eyebrow="FUEL & EXPENSES"
-        title="Fuel and expenses"
-        description="Demo fill-ups and trip-related costs."
-        action={<PrimaryButton>Add expense</PrimaryButton>}
-      />
-      <StatGrid
-        items={[
-          { label: "Fuel MTD", value: "₹2.4L" },
-          { label: "Litres filled", value: "3,180" },
-          { label: "Avg cost / L", value: "₹96.4" },
-          { label: "Other expenses", value: "₹38K" },
-        ]}
-      />
-      <Panel
-        title="Recent entries"
-        action={
-          <div className="flex gap-2">
-            <SearchField placeholder="Search vehicle or card" />
-            <GhostButton>Cards</GhostButton>
-          </div>
-        }
-      >
-        <DataTable
-          columns={["Date", "Vehicle", "Type", "Qty / note", "Amount", "Status"]}
-          rows={sampleFuel.map((item, index) => [
-            item.date,
-            item.vehicle,
-            item.type,
-            item.note,
-            item.amount,
-            <StatusPill key={`f-${index}`} label={item.status} tone={tone[item.status]} />,
-          ])}
-        />
-      </Panel>
-    </div>
+    <ModuleWorkspace
+      eyebrow="FUEL & EXPENSES"
+      title="Fuel and expenses"
+      description="Log fill-ups or expenses and export the ledger."
+      storageKey="fleet_module_fuel_v1"
+      seed={seed}
+      formTitle="Add fuel / expense"
+      listTitle="Recent entries"
+      createLabel="Save expense"
+      statusKey="status"
+      statusTone={{
+        Posted: "success",
+        Review: "warning",
+      }}
+      fields={[
+        { name: "date", label: "Date", placeholder: "27 Aug" },
+        { name: "vehicle", label: "Vehicle", placeholder: "BUS-01" },
+        {
+          name: "type",
+          label: "Type",
+          options: [
+            { value: "Diesel", label: "Diesel" },
+            { value: "Petrol", label: "Petrol" },
+            { value: "Toll", label: "Toll" },
+            { value: "Parking", label: "Parking" },
+            { value: "Other", label: "Other" },
+          ],
+        },
+        { name: "note", label: "Qty / note", placeholder: "42 L" },
+        { name: "amount", label: "Amount", placeholder: "₹4,050" },
+        {
+          name: "status",
+          label: "Status",
+          options: [
+            { value: "Posted", label: "Posted" },
+            { value: "Review", label: "Review" },
+          ],
+        },
+      ]}
+      columns={[
+        { key: "date", label: "Date" },
+        { key: "vehicle", label: "Vehicle" },
+        { key: "type", label: "Type" },
+        { key: "note", label: "Qty / note" },
+        { key: "amount", label: "Amount" },
+        { key: "status", label: "Status" },
+      ]}
+    />
   );
 }

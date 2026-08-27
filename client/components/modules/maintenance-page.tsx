@@ -1,61 +1,58 @@
 "use client";
 
-import {
-  DataTable,
-  GhostButton,
-  ModuleHeader,
-  Panel,
-  PrimaryButton,
-  SearchField,
-  StatGrid,
-  StatusPill,
-} from "@/components/admin-ui";
+import { ModuleWorkspace } from "@/components/module-workspace";
 import { sampleMaintenance } from "@/lib/sample-data";
 
-const tone = {
-  Critical: "danger",
-  Pending: "warning",
-  "In progress": "info",
-  Closed: "success",
-} as const;
+const seed = sampleMaintenance.map((item, index) => ({
+  id: `mnt-${index + 1}`,
+  vehicle: item.vehicle,
+  issue: item.issue,
+  workshop: item.workshop,
+  due: item.due,
+  priority: item.priority,
+}));
 
 export function MaintenancePage() {
   return (
-    <div className="space-y-6">
-      <ModuleHeader
-        eyebrow="MAINTENANCE"
-        title="Maintenance tracker"
-        description="Demo workshop jobs for the FleetCare Demo School fleet."
-        action={<PrimaryButton>New work order</PrimaryButton>}
-      />
-      <StatGrid
-        items={[
-          { label: "Open jobs", value: "3" },
-          { label: "Critical", value: "1" },
-          { label: "Due this week", value: "2" },
-          { label: "Completed MTD", value: "17" },
-        ]}
-      />
-      <Panel
-        title="Work orders"
-        action={
-          <div className="flex gap-2">
-            <SearchField placeholder="Search vehicle" />
-            <GhostButton>Workshop</GhostButton>
-          </div>
-        }
-      >
-        <DataTable
-          columns={["Vehicle", "Issue", "Workshop", "Due", "Priority"]}
-          rows={sampleMaintenance.map((item, index) => [
-            item.vehicle,
-            item.issue,
-            item.workshop,
-            item.due,
-            <StatusPill key={`m-${index}`} label={item.priority} tone={tone[item.priority]} />,
-          ])}
-        />
-      </Panel>
-    </div>
+    <ModuleWorkspace
+      eyebrow="MAINTENANCE"
+      title="Maintenance tracker"
+      description="Create work orders and export workshop jobs."
+      storageKey="fleet_module_maintenance_v1"
+      seed={seed}
+      formTitle="Add work order"
+      listTitle="Work orders"
+      createLabel="Save work order"
+      statusKey="priority"
+      statusTone={{
+        Critical: "danger",
+        Pending: "warning",
+        "In progress": "info",
+        Closed: "success",
+      }}
+      fields={[
+        { name: "vehicle", label: "Vehicle", placeholder: "BUS TN-30-AB-1234" },
+        { name: "issue", label: "Issue", placeholder: "Brake replacement" },
+        { name: "workshop", label: "Workshop", placeholder: "City Auto Care" },
+        { name: "due", label: "Due date", placeholder: "29 Aug" },
+        {
+          name: "priority",
+          label: "Priority",
+          options: [
+            { value: "Pending", label: "Pending" },
+            { value: "In progress", label: "In progress" },
+            { value: "Critical", label: "Critical" },
+            { value: "Closed", label: "Closed" },
+          ],
+        },
+      ]}
+      columns={[
+        { key: "vehicle", label: "Vehicle" },
+        { key: "issue", label: "Issue" },
+        { key: "workshop", label: "Workshop" },
+        { key: "due", label: "Due" },
+        { key: "priority", label: "Priority" },
+      ]}
+    />
   );
 }
