@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #0f172a;
+  --fleet-blue: #2563eb;
+  --fleet-blue-dark: #1d4ed8;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --panel: #f8fafc;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-fleet: var(--fleet-blue);
+  --font-sans: var(--font-sans);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), "Segoe UI", sans-serif;
+}
+
+input:focus,
+button:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 1px;
+}
