@@ -1,0 +1,6 @@
+# Copy to local.properties (gitignored) and set your SDK path.
+# Homebrew command-line tools (this machine):
+sdk.dir=/opt/homebrew/share/android-commandlinetools
+#
+# Android Studio default:
+# sdk.dir=/Users/YOUR_USER/Library/Android/sdk

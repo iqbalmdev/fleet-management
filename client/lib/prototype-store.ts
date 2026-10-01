@@ -19,6 +19,14 @@ export type ProtoDriver = {
   license: string;
   phone: string;
   email?: string;
+  dateOfBirth?: string | null;
+  licenceType?: string;
+  licenceExpiry?: string;
+  experienceYears?: number;
+  address?: string;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  status?: "pending" | "approved" | "active";
 };
 
 export type ProtoVehicle = {
@@ -27,6 +35,24 @@ export type ProtoVehicle = {
   code: string;
   plate: string;
   capacity: number;
+  vehicleType?: string;
+  make?: string;
+  model?: string;
+  year?: number;
+  fuelType?: string;
+  chassisNumber?: string;
+  engineNumber?: string;
+  registrationDate?: string | null;
+  odometer?: number | null;
+  insuranceExpiry?: string | null;
+  fitnessExpiry?: string | null;
+  permitExpiry?: string | null;
+  status?: "pending" | "available" | "on_trip" | "maintenance";
+  /** Set when a maintenance case completes (or from schedules). */
+  lastServiceDate?: string | null;
+  lastServiceOdometer?: number | null;
+  nextServiceDate?: string | null;
+  nextServiceOdometer?: number | null;
 };
 
 export type ProtoOrg = {
@@ -89,13 +115,36 @@ function seedStore(): ProtoStore {
       phone: driver.phone,
       email: index === 0 ? demoLogins.driver.email : undefined,
     })),
-    vehicles: sampleVehicles.map((vehicle, index) => ({
-      id: `BUS-${String(index + 1).padStart(3, "0")}`,
-      orgId: demoLogins.admin.orgId,
-      code: vehicle.code,
-      plate: vehicle.plate,
-      capacity: vehicle.capacity,
-    })),
+    vehicles: sampleVehicles.map((vehicle, index) => {
+      const odometerByCode: Record<string, number> = {
+        "BUS-01": 48250,
+        "BUS-07": 39100,
+        "VAN-04": 49500,
+        "BUS-12": 52080,
+      };
+      const statusByCode: Record<
+        string,
+        NonNullable<ProtoVehicle["status"]>
+      > = {
+        "BUS-01": "on_trip",
+        "BUS-07": "available",
+        "VAN-04": "available",
+        "BUS-12": "maintenance",
+      };
+      return {
+        id: `BUS-${String(index + 1).padStart(3, "0")}`,
+        orgId: demoLogins.admin.orgId,
+        code: vehicle.code,
+        plate: vehicle.plate,
+        capacity: vehicle.capacity,
+        odometer: odometerByCode[vehicle.code] ?? null,
+        status: statusByCode[vehicle.code] ?? "available",
+        lastServiceDate: vehicle.code === "VAN-04" ? "2026-03-15" : null,
+        lastServiceOdometer: vehicle.code === "VAN-04" ? 40000 : null,
+        nextServiceDate: vehicle.code === "VAN-04" ? "2026-09-15" : null,
+        nextServiceOdometer: vehicle.code === "VAN-04" ? 50000 : null,
+      };
+    }),
     nextOrg: 1002,
     nextUser: 3,
     nextDriver: sampleDrivers.length + 1,
@@ -225,6 +274,49 @@ export function listVehicles(orgId: string) {
   return readStore().vehicles.filter((item) => item.orgId === orgId);
 }
 
+export function getVehicle(orgId: string, vehicleId: string): ProtoVehicle | undefined {
+  return readStore().vehicles.find(
+    (item) => item.orgId === orgId && item.id === vehicleId,
+  );
+}
+
+export function getDriver(orgId: string, driverId: string): ProtoDriver | undefined {
+  return readStore().drivers.find(
+    (item) => item.orgId === orgId && item.id === driverId,
+  );
+}
+
+export function updateVehicle(
+  orgId: string,
+  vehicleId: string,
+  patch: Partial<
+    Omit<ProtoVehicle, "id" | "orgId">
+  >,
+): ProtoVehicle {
+  const store = readStore();
+  const index = store.vehicles.findIndex(
+    (item) => item.orgId === orgId && item.id === vehicleId,
+  );
+  if (index < 0) {
+    throw new ProtoError("Vehicle not found", "VEHICLE_NOT_FOUND");
+  }
+  const current = store.vehicles[index];
+  if (
+    patch.odometer != null &&
+    current.odometer != null &&
+    patch.odometer < current.odometer
+  ) {
+    throw new ProtoError(
+      "Odometer cannot be less than the current vehicle reading.",
+      "ODOMETER_REGRESSION",
+    );
+  }
+  const updated: ProtoVehicle = { ...current, ...patch };
+  store.vehicles[index] = updated;
+  writeStore(store);
+  return updated;
+}
+
 export function createDriverAccount(
   orgId: string,
   orgName: string,
@@ -234,23 +326,51 @@ export function createDriverAccount(
     phone: string;
     license: string;
     password: string;
+    dateOfBirth?: string | null;
+    licenceType?: string;
+    licenceExpiry?: string;
+    experienceYears?: number;
+    address?: string;
+    emergencyContactName?: string | null;
+    emergencyContactPhone?: string | null;
   },
 ) {
   const store = readStore();
-  if (store.users.some((user) => user.email.toLowerCase() === input.email.toLowerCase())) {
-    throw new ProtoError("An account with this email already exists");
+  const email = input.email.toLowerCase().trim();
+  const license = input.license.toUpperCase().trim();
+  const phone = input.phone.startsWith("+") ? input.phone : `+91${input.phone.replace(/\D/g, "")}`;
+
+  if (store.users.some((user) => user.email.toLowerCase() === email)) {
+    throw new ProtoError("An account with this email already exists", "EMAIL_EXISTS");
+  }
+  if (
+    store.drivers.some(
+      (driver) => driver.orgId === orgId && driver.license.toUpperCase() === license,
+    )
+  ) {
+    throw new ProtoError("A driver with this licence number already exists", "LICENSE_EXISTS");
+  }
+  if (store.drivers.some((driver) => driver.orgId === orgId && driver.phone === phone)) {
+    throw new ProtoError("A driver with this mobile number already exists", "PHONE_EXISTS");
   }
 
   const driverId = `DRV-${String(store.nextDriver).padStart(3, "0")}`;
   store.nextDriver += 1;
-  const phone = input.phone.startsWith("+") ? input.phone : `+91${input.phone}`;
   store.drivers.push({
     id: driverId,
     orgId,
-    name: input.name,
-    license: input.license,
+    name: input.name.trim(),
+    license,
     phone,
-    email: input.email.toLowerCase(),
+    email,
+    dateOfBirth: input.dateOfBirth ?? null,
+    licenceType: input.licenceType,
+    licenceExpiry: input.licenceExpiry,
+    experienceYears: input.experienceYears,
+    address: input.address,
+    emergencyContactName: input.emergencyContactName ?? null,
+    emergencyContactPhone: input.emergencyContactPhone ?? null,
+    status: "approved",
   });
 
   const userId = `USR-${String(store.nextUser).padStart(4, "0")}`;
@@ -259,8 +379,8 @@ export function createDriverAccount(
     id: userId,
     orgId,
     orgName,
-    fullName: input.name,
-    email: input.email.toLowerCase(),
+    fullName: input.name.trim(),
+    email,
     password: input.password,
     designation: "driver",
     role: "driver",
@@ -268,22 +388,75 @@ export function createDriverAccount(
   });
 
   writeStore(store);
-  return { driverId, email: input.email.toLowerCase() };
+  return { driverId, email };
 }
 
 export function createVehicle(
   orgId: string,
-  input: { code: string; plate: string; capacity: number },
+  input: {
+    code: string;
+    plate: string;
+    capacity: number;
+    vehicleType?: string;
+    make?: string;
+    model?: string;
+    year?: number;
+    fuelType?: string;
+    chassisNumber?: string;
+    engineNumber?: string;
+    registrationDate?: string | null;
+    odometer?: number | null;
+    insuranceExpiry?: string | null;
+    fitnessExpiry?: string | null;
+    permitExpiry?: string | null;
+  },
 ) {
   const store = readStore();
+  const plate = input.plate.toUpperCase().trim();
+  const chassis = input.chassisNumber?.toUpperCase().trim();
+  const engine = input.engineNumber?.toUpperCase().trim();
+
+  if (store.vehicles.some((vehicle) => vehicle.orgId === orgId && vehicle.plate.toUpperCase() === plate)) {
+    throw new ProtoError("A vehicle with this plate number already exists", "PLATE_EXISTS");
+  }
+  if (
+    chassis &&
+    store.vehicles.some(
+      (vehicle) => vehicle.orgId === orgId && vehicle.chassisNumber?.toUpperCase() === chassis,
+    )
+  ) {
+    throw new ProtoError("A vehicle with this chassis number already exists", "CHASSIS_EXISTS");
+  }
+  if (
+    engine &&
+    store.vehicles.some(
+      (vehicle) => vehicle.orgId === orgId && vehicle.engineNumber?.toUpperCase() === engine,
+    )
+  ) {
+    throw new ProtoError("A vehicle with this engine number already exists", "ENGINE_EXISTS");
+  }
+
   const id = `BUS-${String(store.nextVehicle).padStart(3, "0")}`;
   store.nextVehicle += 1;
   const vehicle: ProtoVehicle = {
     id,
     orgId,
-    code: input.code,
-    plate: input.plate,
+    code: input.code || plate.replace(/-/g, "").slice(0, 12),
+    plate,
     capacity: input.capacity,
+    vehicleType: input.vehicleType,
+    make: input.make,
+    model: input.model,
+    year: input.year,
+    fuelType: input.fuelType,
+    chassisNumber: chassis,
+    engineNumber: engine,
+    registrationDate: input.registrationDate ?? null,
+    odometer: input.odometer ?? null,
+    insuranceExpiry: input.insuranceExpiry ?? null,
+    fitnessExpiry: input.fitnessExpiry ?? null,
+    permitExpiry: input.permitExpiry ?? null,
+    status: "available",
   };
   store.vehicles.push(vehicle);
   writeStore(store);
